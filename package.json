@@ -1,0 +1,42 @@
+{
+  "name": "pi-turn-tps",
+  "version": "0.1.0",
+  "description": "OpenCode-style turn throughput (tokens/sec) for the Pi coding agent, measured from completed model calls instead of streamed chunks.",
+  "keywords": [
+    "pi",
+    "pi-package",
+    "pi-extension",
+    "tps",
+    "tokens-per-second",
+    "throughput"
+  ],
+  "author": "Stanislav Stehniy",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sstehniy/pi-turn-tps.git"
+  },
+  "homepage": "https://github.com/sstehniy/pi-turn-tps#readme",
+  "bugs": {
+    "url": "https://github.com/sstehniy/pi-turn-tps/issues"
+  },
+  "type": "module",
+  "pi": {
+    "extensions": [
+      "./extensions/pi-turn-tps/index.ts"
+    ]
+  },
+  "scripts": {
+    "test": "bun test extensions",
+    "typecheck": "tsc --noEmit",
+    "check": "bun run typecheck && bun run test"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.81.0"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.85.1",
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.9.0"
+  }
+}
