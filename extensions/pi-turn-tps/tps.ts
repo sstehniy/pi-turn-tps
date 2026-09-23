@@ -127,6 +127,10 @@ export function assistantModelKey(message: AssistantLike): string {
  *   starts a new measurement inside the run.
  * - A mid-run model switch resets the aggregation at that boundary.
  *
+ * A reset never blanks the display: until the new measurement has a completed
+ * call, the last completed reading keeps rendering, so a footer reading is
+ * replaced rather than interrupted.
+ *
  * Any call with missing timing, invalid usage, non-positive elapsed time, or an
  * error/aborted stop reason invalidates the run reading, which then renders as
  * unavailable until the next reset.
@@ -138,6 +142,8 @@ export class TurnTpsTracker {
   private totalMs = 0;
   private modelKey: string | null = null;
   private turnStartMs: number | null = null;
+  /** Last completed reading, kept on screen until a fresh one exists. */
+  private last: { tokens: number; ms: number } | null = null;
 
   /** A new agent run begins. */
   agentStart(): void {
@@ -202,28 +208,41 @@ export class TurnTpsTracker {
     this.totalTokens += tokens;
     this.totalMs += elapsedMs;
     if (this.modelKey === null) this.modelKey = completion.modelKey;
+    this.last = { tokens: this.totalTokens, ms: this.totalMs };
+  }
+
+  /**
+   * Reading to display: the in-progress measurement once it has data, otherwise
+   * the last completed one. Unavailable only when nothing was ever measured or
+   * the current measurement was invalidated.
+   */
+  private currentReading(): { tokens: number; ms: number } | null {
+    if (!this.valid) return null;
+    if (this.totalMs > 0) return { tokens: this.totalTokens, ms: this.totalMs };
+    return this.last;
   }
 
   /** Current reading, or null when unavailable. */
   get tps(): number | null {
-    if (!this.valid || this.totalMs <= 0) return null;
-    return this.totalTokens / (this.totalMs / 1000);
+    const reading = this.currentReading();
+    return reading === null ? null : reading.tokens / (reading.ms / 1000);
   }
 
-  /** Tokens accumulated for the current measurement. */
+  /** Tokens of the displayed reading. */
   get tokens(): number {
-    return this.totalTokens;
+    return this.currentReading()?.tokens ?? 0;
   }
 
-  /** Elapsed model-call time accumulated for the current measurement. */
+  /** Elapsed model-call time of the displayed reading. */
   get elapsedMs(): number {
-    return this.totalMs;
+    return this.currentReading()?.ms ?? 0;
   }
 
   /** Drops all state, for example on session switch or reload. */
   clear(): void {
     this.inRun = false;
     this.turnStartMs = null;
+    this.last = null;
     this.resetAggregation();
   }
 

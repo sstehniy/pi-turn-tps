@@ -107,7 +107,7 @@ describe("extension wiring", () => {
     });
   });
 
-  test("shows a completed-call average and resets on the next prompt", async () => {
+  test("shows a completed-call average and keeps it until the next value", async () => {
     await withTempDir(async (dir) => {
       const harness = createHarness(join(dir, "pi-turn-tps.json"));
       await harness.emit("session_start", { reason: "startup" });
@@ -116,10 +116,17 @@ describe("extension wiring", () => {
       await harness.emit("turn_start", { type: "turn_start", turnIndex: 0, timestamp: 0 });
       await harness.emit("message_end", { type: "message_end", message: assistantMessage(20) });
 
-      expect(harness.status()).toMatch(/^\u26a1 TPS: \d+\.\d tok\/s$/);
+      const first = harness.status();
+      expect(first).toMatch(/^\u26a1 TPS: \d+\.\d tok\/s$/);
 
+      // A new prompt is delivered: the previous reading stays on screen.
       await harness.emit("message_start", { type: "message_start", message: { role: "user" } });
-      expect(harness.status()).toBe("\u26a1 TPS: \u2014");
+      expect(harness.status()).toBe(first);
+
+      // It is replaced only once the next call completes.
+      await harness.emit("turn_start", { type: "turn_start", turnIndex: 1, timestamp: 0 });
+      await harness.emit("message_end", { type: "message_end", message: assistantMessage(40) });
+      expect(harness.status()).toMatch(/^\u26a1 TPS: \d+\.\d tok\/s$/);
     });
   });
 

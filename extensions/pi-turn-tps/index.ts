@@ -94,10 +94,10 @@ export default function turnTpsExtension(pi: ExtensionAPI, options?: TurnTpsOpti
     tracker.turnStart(performance.now());
   });
 
-  pi.on("message_start", (event, ctx) => {
+  pi.on("message_start", (event) => {
     if (event.message.role !== "user") return;
+    // No re-render: the previous reading stays until a new one exists.
     tracker.userMessageDelivered();
-    render(ctx);
   });
 
   pi.on("message_end", (event, ctx) => {

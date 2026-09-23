@@ -179,20 +179,51 @@ describe("measurement", () => {
     expect(tracker.tps).toBe(10);
   });
 
-  test("starts fresh on a new run", () => {
+  test("starts fresh on a new run without blanking the display", () => {
     const tracker = new TurnTpsTracker();
     tracker.agentStart();
     tracker.turnStart(0);
     complete(tracker, 2_000, 20);
     expect(tracker.tps).toBe(10);
 
+    // The previous reading stays until the new measurement produces one.
     tracker.agentStart();
-    expect(tracker.tps).toBeNull();
+    expect(tracker.tps).toBe(10);
+    expect(tracker.elapsedMs).toBe(2_000);
 
     tracker.turnStart(0);
     complete(tracker, 1_000, 10);
     expect(tracker.tps).toBe(10);
     expect(tracker.tokens).toBe(10);
+  });
+
+  test("keeps the last reading until the next completed call", () => {
+    const tracker = new TurnTpsTracker();
+    tracker.agentStart();
+    tracker.turnStart(0);
+    complete(tracker, 2_000, 20);
+    tracker.agentEnd();
+
+    // A new prompt arrives: the reading survives delivery and generation.
+    tracker.agentStart();
+    tracker.userMessageDelivered();
+    tracker.turnStart(10_000);
+    expect(tracker.tps).toBe(10);
+
+    complete(tracker, 11_000, 30);
+    expect(tracker.tps).toBe(30);
+    expect(tracker.tokens).toBe(30);
+  });
+
+  test("still blanks the display when a measurement is invalidated", () => {
+    const tracker = new TurnTpsTracker();
+    tracker.agentStart();
+    tracker.turnStart(0);
+    complete(tracker, 2_000, 20);
+
+    tracker.turnStart(3_000);
+    complete(tracker, 4_000, 10, { stopReason: "aborted" });
+    expect(tracker.tps).toBeNull();
   });
 
   test("resets on a delivered steering message but keeps the turn anchor", () => {
@@ -206,7 +237,7 @@ describe("measurement", () => {
     // Pi emits turn_start before injecting a queued steering message.
     tracker.turnStart(60_000);
     tracker.userMessageDelivered();
-    expect(tracker.tps).toBeNull();
+    expect(tracker.tps).toBe(10);
 
     complete(tracker, 62_000, 30);
     expect(tracker.tps).toBe(15);
