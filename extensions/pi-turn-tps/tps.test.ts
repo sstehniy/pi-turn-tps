@@ -287,14 +287,16 @@ describe("display", () => {
     expect(plain(Number.POSITIVE_INFINITY, "compact")).toBe("\u2014");
   });
 
-  test("applies the tier color only to the value", () => {
+  test("colors the number without coloring following powerline statuses", () => {
     const rendered = renderDisplay(buildDisplay(12.3, "full"), (label) => `\x1b[2m${label}\x1b[0m`, rgbAnsi);
     expect(rendered).toContain(`\x1b[2m\u26a1 TPS:\x1b[0m`);
-    expect(rendered).toContain(rgbAnsi(TPS_COLOR_SLOW, "12.3 tok/s"));
+    expect(rendered).toContain(`${rgbAnsi(TPS_COLOR_SLOW, "12.3")} tok/s`);
 
     const compact = renderDisplay(buildDisplay(12.3, "compact"), (label) => label, rgbAnsi);
     expect(compact).not.toContain("TPS");
-    expect(compact).toContain(rgbAnsi(TPS_COLOR_SLOW, "12.3 tok/s"));
+    expect(compact).toBe(`${rgbAnsi(TPS_COLOR_SLOW, "12.3")} tok/s`);
+    // Powerline trims terminal ANSI codes from statuses before joining them.
+    expect(compact.replace(/(\x1b\[[0-9;]*m|\s|·|[|])+$/, "")).toBe(compact);
   });
 
   test("maps color tiers at their boundaries", () => {

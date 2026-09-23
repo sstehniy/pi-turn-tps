@@ -70,7 +70,10 @@ export function renderDisplay(
   dim: (text: string) => string,
   color: (hex: string, text: string) => string,
 ): string {
-  const value = display.color ? color(display.color, display.value) : display.value;
+  // Powerline strips trailing ANSI resets; keep the plain unit after the colored number.
+  const value = display.color
+    ? `${color(display.color, display.value.slice(0, -6))} tok/s`
+    : display.value;
   return display.prefix ? `${dim(display.prefix)} ${value}` : value;
 }
 
